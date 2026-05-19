@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DryQ CRM</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#080808;--surface:#111;--surface2:#181818;--surface3:#222;--border:#252525;--border2:#303030;--text:#f0f0f0;--text2:#999;--text3:#555;--accent:#fff;--accent2:#ccc;--rc:#22c55e;--re:#3b82f6;--lr:#f97316;--rs:#eab308;--ui:#a855f7;--ri:#ec4899;--ev:#06b6d4;--um:#f43f5e;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;display:flex;}
+::-webkit-scrollbar{width:4px;height:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+.sidebar{width:224px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:100;overflow-y:auto;}
+.logo-block{padding:20px 18px 14px;border-bottom:1px solid var(--border);}
+.logo-text{font-size:20px;font-weight:800;letter-spacing:-0.5px;display:flex;align-items:center;gap:8px;}
+.logo-pip{width:7px;height:7px;background:var(--accent);border-radius:50%;animation:pip 2s infinite;}
+@keyframes pip{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.3;transform:scale(.7);}}
+.logo-sub{font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:2px;margin-top:3px;}
+.nav-label{font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;padding:12px 18px 4px;}
+.nav-item{display:flex;align-items:center;gap:8px;padding:8px 18px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);border-left:2px solid transparent;transition:all .12s;user-select:none;}
+.nav-item:hover{color:var(--text);background:var(--surface2);}
+.nav-item.active{color:var(--accent);background:var(--surface2);border-left-color:var(--accent);}
+.nav-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.nav-count{margin-left:auto;font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);background:var(--surface3);padding:1px 6px;border-radius:8px;}
+.sidebar-footer{padding:12px 18px;border-top:1px solid var(--border);margin-top:auto;font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:1px;}
+.main{margin-left:224px;flex:1;display:flex;flex-direction:column;}
+.topbar{height:54px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 22px;gap:10px;background:var(--bg);position:sticky;top:0;z-index:50;}
+.topbar-title{font-size:14px;font-weight:700;flex:1;}
+.vtabs{display:flex;gap:3px;}
+.vtab{padding:5px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;color:var(--text2);transition:all .12s;border:1px solid transparent;}
+.vtab.active{color:var(--text);background:var(--surface2);border-color:var(--border2);}
+.vtab:hover:not(.active){color:var(--text);}
+.search-wrap{display:flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--border2);border-radius:7px;padding:5px 10px;width:200px;}
+.search-wrap:focus-within{border-color:var(--text3);}
+.search-wrap input{background:none;border:none;outline:none;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;width:100%;}
+.search-wrap input::placeholder{color:var(--text3);}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:7px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all .12s;border:none;white-space:nowrap;}
+.btn-primary{background:var(--accent);color:var(--bg);}
+.btn-primary:hover{background:var(--accent2);}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2);}
+.btn-ghost:hover{color:var(--text);border-color:var(--text3);}
+.btn-danger{background:transparent;color:#ef4444;border:1px solid #2a1010;}
+.btn-danger:hover{background:#140808;}
+.content{padding:20px;}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;}
+.kpi-label{font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px;}
+.kpi-val{font-size:26px;font-weight:800;}
+.kpi-sub{font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);margin-top:2px;}
+.stats-strip{display:grid;grid-template-columns:repeat(8,1fr);gap:7px;margin-bottom:18px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:10px 12px;cursor:pointer;transition:all .12s;position:relative;overflow:hidden;}
+.stat-card::after{content:'';position:absolute;bottom:0;left:0;width:100%;height:2px;background:var(--c);transform:scaleX(0);transition:transform .15s;}
+.stat-card:hover::after,.stat-card.act::after{transform:scaleX(1);}
+.stat-card:hover,.stat-card.act{background:var(--surface2);border-color:var(--border2);}
+.stat-label{font-family:'DM Mono',monospace;font-size:8px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;}
+.stat-num{font-size:20px;font-weight:800;color:var(--c);}
+.filters-bar{display:flex;align-items:center;gap:7px;margin-bottom:14px;flex-wrap:wrap;}
+.chip{font-family:'DM Mono',monospace;font-size:10px;padding:3px 10px;border-radius:14px;border:1px solid var(--border2);color:var(--text2);cursor:pointer;transition:all .12s;}
+.chip:hover{color:var(--text);border-color:var(--text3);}
+.chip.act{color:var(--bg);background:var(--accent);border-color:var(--accent);}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.tbl-hdr{display:grid;grid-template-columns:24px 2fr 1.1fr .9fr .8fr .7fr .8fr 80px;padding:9px 16px;background:var(--surface2);border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;gap:8px;align-items:center;}
+.tbl-row{display:grid;grid-template-columns:24px 2fr 1.1fr .9fr .8fr .7fr .8fr 80px;padding:11px 16px;border-bottom:1px solid var(--border);align-items:center;gap:8px;transition:background .1s;cursor:pointer;animation:fr .18s ease;}
+@keyframes fr{from{opacity:0;transform:translateY(3px);}to{opacity:1;transform:translateY(0);}}
+.tbl-row:last-child{border-bottom:none;}
+.tbl-row:hover{background:var(--surface2);}
+.cname{font-size:13px;font-weight:700;color:var(--text);margin-bottom:1px;}
+.csub{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);}
+.cat-b{display:inline-flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;font-size:9px;padding:2px 7px;border-radius:3px;white-space:nowrap;}
+.stat-b{display:inline-flex;align-items:center;gap:3px;font-family:'DM Mono',monospace;font-size:9px;padding:2px 7px;border-radius:3px;}
+.sn{background:#0d1520;color:#4d8aff;border:1px solid #162030;}
+.sc{background:#0a1f0a;color:#22c55e;border:1px solid #0f2f0f;}
+.sq{background:#1a1200;color:#eab308;border:1px solid #2a2000;}
+.sne{background:#1a0a1a;color:#a855f7;border:1px solid #2a0f2a;}
+.sw{background:#0f1a0f;color:#4ade80;border:1px solid #1a2f1a;}
+.sp{background:#1a0f0f;color:#f97316;border:1px solid #2a1a0f;}
+.sl{background:#1a0808;color:#666;border:1px solid #2a1010;}
+.tbl-cell{font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);}
+.row-actions{display:flex;gap:5px;justify-content:flex-end;opacity:0;transition:opacity .12s;}
+.tbl-row:hover .row-actions{opacity:1;}
+.icon-btn{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--text3);cursor:pointer;font-size:12px;transition:all .12s;}
+.icon-btn:hover{color:var(--text);border-color:var(--text3);}
+.icon-btn.del:hover{color:#ef4444;border-color:#3a1010;background:#140808;}
+.tbl-num{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);text-align:right;}
+.hub-b{font-family:'DM Mono',monospace;font-size:8px;padding:1px 5px;border-radius:2px;background:#0a1200;color:#4ade80;border:1px solid #0f2000;}
+.pri-b{font-size:8px;padding:1px 5px;border-radius:3px;font-family:'DM Mono',monospace;}
+.ph{background:#1a0808;color:#ef4444;border:1px solid #3a1010;}
+.pm{background:#1a1200;color:#eab308;border:1px solid #2a2000;}
+.pl{background:#080f1a;color:#3b82f6;border:1px solid #0f1a2a;}
+.empty-state{text-align:center;padding:50px 20px;color:var(--text3);font-family:'DM Mono',monospace;font-size:12px;}
+.empty-big{font-size:28px;margin-bottom:8px;}
+.pipeline-cols{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
+.pcol{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;}
+.pcol-title{font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
+.pcard{background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:10px;margin-bottom:8px;cursor:pointer;transition:border-color .12s;}
+.pcard:hover{border-color:var(--text3);}
+.pcard-name{font-size:12px;font-weight:700;color:var(--text);margin-bottom:3px;}
+.pcard-cat{font-family:'DM Mono',monospace;font-size:9px;margin-bottom:3px;}
+.pcard-score{font-family:'DM Mono',monospace;font-size:10px;text-align:right;margin-top:4px;}
+.rev-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
+.rev-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;}
+.rev-card-title{font-size:13px;font-weight:700;margin-bottom:3px;}
+.rev-formula{font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);margin-bottom:10px;}
+.rev-row{display:flex;justify-content:space-between;padding:4px 0;font-size:11px;border-bottom:1px solid var(--border);color:var(--text2);}
+.rev-row:last-child{border-bottom:none;font-weight:700;color:var(--text);}
+.rev-totals{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px;}
+.rev-total{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;}
+.rev-total-label{font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:1.5px;margin-bottom:8px;}
+.rev-total-val{font-size:30px;font-weight:800;}
+.bar-chart{display:flex;align-items:flex-end;gap:8px;height:110px;padding:0 4px;}
+.bar-col{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;}
+.bar{border-radius:3px 3px 0 0;width:100%;min-height:2px;}
+.bar-label{font-family:'DM Mono',monospace;font-size:8px;color:var(--text3);text-align:center;}
+.bar-val{font-family:'DM Mono',monospace;font-size:9px;color:var(--text2);}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.82);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
+.overlay.open{opacity:1;pointer-events:all;}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:12px;width:580px;max-width:calc(100vw - 32px);max-height:calc(100vh - 60px);overflow-y:auto;transform:translateY(8px) scale(.98);transition:transform .2s;}
+.overlay.open .modal{transform:translateY(0) scale(1);}
+.modal-hdr{padding:20px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-title{font-size:16px;font-weight:800;}
+.modal-close{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);cursor:pointer;font-size:15px;}
+.modal-close:hover{color:var(--text);}
+.modal-body{padding:18px 24px;}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.fgrid .s2{grid-column:1/-1;}
+.field{display:flex;flex-direction:column;gap:4px;}
+.field label{font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;}
+.field input,.field select,.field textarea{background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:8px 11px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;outline:none;transition:border-color .12s;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--text3);}
+.field select option{background:var(--surface2);color:var(--text);}
+.field textarea{resize:vertical;min-height:68px;}
+.score-row{display:flex;align-items:center;gap:10px;}
+.score-row input[type=range]{flex:1;accent-color:var(--accent);}
+.sval{font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:var(--accent);min-width:22px;}
+.modal-footer{padding:12px 24px 18px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--border);}
+.detail{position:fixed;top:0;right:0;width:356px;height:100vh;background:var(--surface);border-left:1px solid var(--border2);z-index:150;transform:translateX(100%);transition:transform .22s cubic-bezier(.4,0,.2,1);overflow-y:auto;display:flex;flex-direction:column;}
+.detail.open{transform:translateX(0);}
+.detail-hdr{padding:18px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);}
+.dname{font-size:19px;font-weight:800;padding-right:34px;margin-bottom:6px;}
+.detail-close{position:absolute;top:16px;right:16px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);cursor:pointer;font-size:15px;}
+.detail-close:hover{color:var(--text);}
+.detail-body{padding:16px;flex:1;}
+.dsec-label{font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;padding-bottom:5px;border-bottom:1px solid var(--border);margin-bottom:8px;margin-top:16px;}
+.dsec-label:first-child{margin-top:0;}
+.d-row{display:flex;justify-content:space-between;padding:5px 0;font-size:12px;}
+.d-key{color:var(--text3);font-family:'DM Mono',monospace;font-size:10px;min-width:90px;}
+.d-val{color:var(--text);font-size:12px;text-align:right;max-width:210px;word-break:break-word;}
+.dnotes{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);line-height:1.6;white-space:pre-wrap;}
+.detail-footer{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;}
+.score-disp{display:flex;align-items:center;gap:10px;margin-top:10px;}
+.score-bar{flex:1;height:5px;background:var(--surface3);border-radius:3px;overflow:hidden;}
+.score-fill{height:100%;border-radius:3px;transition:width .3s;}
+.toast{position:fixed;bottom:18px;right:18px;background:var(--surface2);border:1px solid var(--border2);border-radius:9px;padding:10px 16px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text);z-index:999;transform:translateY(60px);opacity:0;transition:all .26s cubic-bezier(.4,0,.2,1);}
+.toast.show{transform:translateY(0);opacity:1;}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="logo-block">
+    <div class="logo-text"><div class="logo-pip"></div>DryQ</div>
+    <div class="logo-sub">CRM · Lead Pipeline</div>
+  </div>
+  <nav>
+    <div class="nav-label">Views</div>
+    <div class="nav-item active" onclick="setView('pipeline',this)" data-view="pipeline"><div class="nav-dot" style="background:#555"></div><span>Pipeline</span></div>
+    <div class="nav-item" onclick="setView('table',this)" data-view="table"><div class="nav-dot" style="background:#555"></div><span>All Leads</span></div>
+    <div class="nav-item" onclick="setView('revenue',this)" data-view="revenue"><div class="nav-dot" style="background:#22c55e"></div><span>Revenue Model</span></div>
+    <div class="nav-label">Lead Type</div>
+    <div class="nav-item" onclick="setCat('Run Club',this)" data-cat="Run Club"><div class="nav-dot" style="background:var(--rc)"></div><span>Run Clubs</span><span class="nav-count" id="n-rc">0</span></div>
+    <div class="nav-item" onclick="setCat('Run Event',this)" data-cat="Run Event"><div class="nav-dot" style="background:var(--re)"></div><span>Run Events</span><span class="nav-count" id="n-re">0</span></div>
+    <div class="nav-item" onclick="setCat('Local Runner',this)" data-cat="Local Runner"><div class="nav-dot" style="background:var(--lr)"></div><span>Local Runners</span><span class="nav-count" id="n-lr">0</span></div>
+    <div class="nav-item" onclick="setCat('Running Store',this)" data-cat="Running Store"><div class="nav-dot" style="background:var(--rs)"></div><span>Running Stores</span><span class="nav-count" id="n-rs">0</span></div>
+    <div class="nav-item" onclick="setCat('Ultra Community',this)" data-cat="Ultra Community"><div class="nav-dot" style="background:var(--um)"></div><span>Ultra Community</span><span class="nav-count" id="n-um">0</span></div>
+    <div class="nav-item" onclick="setCat('Running Influencer',this)" data-cat="Running Influencer"><div class="nav-dot" style="background:var(--ri)"></div><span>Run Influencers</span><span class="nav-count" id="n-ri">0</span></div>
+    <div class="nav-item" onclick="setCat('Community Runner',this)" data-cat="Community Runner"><div class="nav-dot" style="background:var(--ev)"></div><span>Community Runners</span><span class="nav-count" id="n-cr">0</span></div>
+    <div class="nav-item" onclick="setCat('Ultra Influencer',this)" data-cat="Ultra Influencer"><div class="nav-dot" style="background:var(--ui)"></div><span>Ultra Influencers</span><span class="nav-count" id="n-ui">0</span></div>
+  </nav>
+  <div class="sidebar-footer">run dry. · rundryq.com</div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="page-title">Pipeline</div>
+    <div class="vtabs">
+      <div class="vtab active" onclick="setView('pipeline',null,'tab')" data-vtab="pipeline">Pipeline</div>
+      <div class="vtab" onclick="setView('table',null,'tab')" data-vtab="table">Table</div>
+      <div class="vtab" onclick="setView('revenue',null,'tab')" data-vtab="revenue">Revenue</div>
+    </div>
+    <div class="search-wrap"><span style="color:var(--text3);font-size:13px;">⌕</span><input type="text" id="search-input" placeholder="Search..." oninput="render()"></div>
+    <button class="btn btn-primary" onclick="openModal()">+ Add Lead</button>
+  </div>
+
+  <div class="content">
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">Total Leads</div><div class="kpi-val" id="kpi-total">0</div><div class="kpi-sub">all types</div></div>
+      <div class="kpi"><div class="kpi-label">High Priority</div><div class="kpi-val" style="color:#ef4444" id="kpi-high">0</div><div class="kpi-sub">score ≥ 70</div></div>
+      <div class="kpi"><div class="kpi-label">Charlotte Hub</div><div class="kpi-val" style="color:#22c55e" id="kpi-clt">0</div><div class="kpi-sub">local leads</div></div>
+      <div class="kpi"><div class="kpi-label">Est. 12mo Revenue</div><div class="kpi-val" style="color:#22c55e" id="kpi-rev">$0</div><div class="kpi-sub">all leads combined</div></div>
+    </div>
+
+    <div class="stats-strip">
+      <div class="stat-card act" style="--c:var(--accent)" onclick="setCat('all',null,'s-all')" id="s-all"><div class="stat-label">All</div><div class="stat-num" id="sn-all">0</div></div>
+      <div class="stat-card" style="--c:var(--rc)" onclick="setCat('Run Club',null,'s-rc')" id="s-rc"><div class="stat-label">Clubs</div><div class="stat-num" id="sn-rc">0</div></div>
+      <div class="stat-card" style="--c:var(--re)" onclick="setCat('Run Event',null,'s-re')" id="s-re"><div class="stat-label">Events</div><div class="stat-num" id="sn-re">0</div></div>
+      <div class="stat-card" style="--c:var(--lr)" onclick="setCat('Local Runner',null,'s-lr')" id="s-lr"><div class="stat-label">Runners</div><div class="stat-num" id="sn-lr">0</div></div>
+      <div class="stat-card" style="--c:var(--rs)" onclick="setCat('Running Store',null,'s-rs')" id="s-rs"><div class="stat-label">Stores</div><div class="stat-num" id="sn-rs">0</div></div>
+      <div class="stat-card" style="--c:var(--um)" onclick="setCat('Ultra Community',null,'s-um')" id="s-um"><div class="stat-label">Ultra</div><div class="stat-num" id="sn-um">0</div></div>
+      <div class="stat-card" style="--c:var(--ri)" onclick="setCat('Running Influencer',null,'s-ri')" id="s-ri"><div class="stat-label">Influencers</div><div class="stat-num" id="sn-ri">0</div></div>
+      <div class="stat-card" style="--c:var(--ev)" onclick="setCat('Community Runner',null,'s-cr')" id="s-cr"><div class="stat-label">Community</div><div class="stat-num" id="sn-cr">0</div></div>
+    </div>
+
+    <div id="view-pipeline">
+      <div class="pipeline-cols" id="pipeline-body"></div>
+    </div>
+
+    <div id="view-table" style="display:none;">
+      <div class="filters-bar">
+        <div class="chip act" data-status="all" onclick="setStatus('all',this)">All</div>
+        <div class="chip" data-status="New" onclick="setStatus('New',this)">New</div>
+        <div class="chip" data-status="Contacted" onclick="setStatus('Contacted',this)">Contacted</div>
+        <div class="chip" data-status="Qualified" onclick="setStatus('Qualified',this)">Qualified</div>
+        <div class="chip" data-status="Negotiating" onclick="setStatus('Negotiating',this)">Negotiating</div>
+        <div class="chip" data-status="Won" onclick="setStatus('Won',this)">Won</div>
+        <div class="chip" data-status="Partner" onclick="setStatus('Partner',this)">Partner</div>
+        <div class="chip" data-status="Lost" onclick="setStatus('Lost',this)">Lost</div>
+      </div>
+      <div class="tbl-wrap">
+        <div class="tbl-hdr"><div>#</div><div>LEAD NAME</div><div>TYPE</div><div>STATUS</div><div>LOCATION</div><div>AUDIENCE</div><div>SCORE / EST. REV</div><div></div></div>
+        <div id="table-body"></div>
+      </div>
+    </div>
+
+    <div id="view-revenue" style="display:none;">
+      <div class="rev-totals">
+        <div class="rev-total"><div class="rev-total-label">Total Est. 12-Month Revenue</div><div class="rev-total-val" style="color:#22c55e" id="rv-total">$0</div></div>
+        <div class="rev-total"><div class="rev-total-label">Charlotte Hub Leads</div><div class="rev-total-val" style="color:#3b82f6" id="rv-clt">0</div></div>
+      </div>
+      <div class="rev-grid" id="rev-grid"></div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:18px;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:12px;">12mo Revenue by Lead Type</div>
+        <div class="bar-chart" id="bar-chart"></div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px;">Revenue Model Formulas</div>
+        <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);line-height:1.9;">
+          <div><span style="color:var(--rc)">Run Clubs:</span> Weekly Turnout × 10% × $28 × 52 weeks</div>
+          <div><span style="color:var(--rs)">Running Stores:</span> Locations × (engagement ÷ 10 × 30 units) × $14 × restocks/yr &nbsp;<span style='color:var(--text3)'>[CLT hub = 6 restocks, others = 4]</span></div>
+          <div><span style="color:var(--ri)">Running Influencers:</span> Reach (buyer pool) × 0.2% × $28 × 2 posts/yr &nbsp;<span style='color:var(--text3)'>[reach = 10% of audience if not set, capped at 5k]</span></div>
+          <div><span style="color:var(--um)">Ultra Community:</span> Community size × 8% × $28 (high engagement)</div>
+          <div><span style="color:var(--ev)">Community Runners:</span> Reach × 5% × $28 (word of mouth)</div>
+          <div><span style="color:var(--re)">Run Events:</span> Turnout × 5% × $28 per event</div>
+          <div style="margin-top:8px;color:#eab308;">★ Charlotte Hub leads receive a +25% local boost on all estimates.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay" onclick="handleOverlay(event)">
+  <div class="modal">
+    <div class="modal-hdr"><div class="modal-title" id="modal-title">Add Lead</div><button class="modal-close" onclick="closeModal()">×</button></div>
+    <div class="modal-body">
+      <div class="fgrid">
+        <div class="field"><label>Lead Name *</label><input id="f-name" type="text" placeholder="Name or organization"></div>
+        <div class="field"><label>Lead Type *</label>
+          <select id="f-cat">
+            <option value="">Select type</option>
+            <option>Run Club</option><option>Run Event</option><option>Local Runner</option>
+            <option>Running Store</option><option>Ultra Community</option>
+            <option>Running Influencer</option><option>Community Runner</option><option>Ultra Influencer</option>
+          </select>
+        </div>
+        <div class="field"><label>Status</label>
+          <select id="f-status"><option>New</option><option>Contacted</option><option>Qualified</option><option>Negotiating</option><option>Won</option><option>Partner</option><option>Lost</option></select>
+        </div>
+        <div class="field"><label>Assigned To</label>
+          <select id="f-assigned"><option value="Unassigned">Unassigned</option><option value="JT">JT (Jeff)</option><option value="TT">TT (Tyler)</option></select>
+        </div>
+        <div class="field"><label>Location</label><input id="f-location" type="text" placeholder="City, State"></div>
+        <div class="field"><label>Instagram Handle</label><input id="f-instagram" type="text" placeholder="@handle"></div>
+        <div class="field"><label>Audience Size</label><input id="f-audience" type="number" placeholder="0" min="0"></div>
+        <div class="field"><label>Weekly Turnout (Clubs/Events)</label><input id="f-turnout" type="number" placeholder="0" min="0"></div>
+        <div class="field"><label>Reach (Influencer buyer pool)</label><input id="f-reach" type="number" placeholder="e.g. 5000" min="0" title="Realistic engaged buyer pool — leave blank to auto-calculate from audience"></div>
+        <div class="field"><label>Num. Locations (Stores)</label><input id="f-locations" type="number" placeholder="1" min="1" value="1"></div>
+        <div class="field"><label>Email</label><input id="f-email" type="email" placeholder="email@example.com"></div>
+        <div class="field"><label>Contact Name</label><input id="f-contact" type="text" placeholder="Key contact person"></div>
+        <div class="field" style="flex-direction:row;align-items:center;gap:10px;padding-top:18px;">
+          <input type="checkbox" id="f-hub" style="width:16px;height:16px;accent-color:#22c55e;">
+          <label style="text-transform:none;letter-spacing:0;font-size:12px;color:var(--text2);">Charlotte Hub lead (+25% revenue)</label>
+        </div>
+        <div class="field s2"><label>Engagement Score (1–10)</label>
+          <div class="score-row"><input type="range" id="f-engagement" min="1" max="10" value="5" oninput="document.getElementById('f-eng-val').textContent=this.value"><span class="sval" id="f-eng-val">5</span></div>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:8px;">
+            <div style="background:var(--surface3);border-radius:5px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:9px;color:var(--text3)"><span style="color:#ef4444;font-weight:700">1–2</span><br>Cold / misaligned. Low community trust.</div>
+            <div style="background:var(--surface3);border-radius:5px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:9px;color:var(--text3)"><span style="color:#f97316;font-weight:700">3–4</span><br>Loose fit. Large following but not specific to DryQ audience.</div>
+            <div style="background:var(--surface3);border-radius:5px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:9px;color:var(--text3)"><span style="color:#eab308;font-weight:700">5–6</span><br>Cold but well-matched. Right category, location, audience.</div>
+            <div style="background:var(--surface3);border-radius:5px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:9px;color:var(--text3)"><span style="color:#22c55e;font-weight:700">7–8</span><br>Warm. Responded positively, active runner, engaged following.</div>
+            <div style="background:var(--surface3);border-radius:5px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:9px;color:var(--text3)"><span style="color:#3b82f6;font-weight:700">9–10</span><br>Already using DryQ, unprompted advocate, proven community influence.</div>
+          </div>
+        </div>
+        <div class="field s2"><label>Notes</label><textarea id="f-notes" placeholder="Relationship context, next steps, how connected..."></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveLead()">Save Lead</button></div>
+  </div>
+</div>
+
+<!-- DETAIL PANEL -->
+<div class="detail" id="detail">
+  <div class="detail-hdr">
+    <button class="detail-close" onclick="closeDetail()">×</button>
+    <div class="dname" id="d-name"></div>
+    <div id="d-badges" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;"></div>
+    <div class="score-disp" id="d-score-disp"></div>
+  </div>
+  <div class="detail-body" id="d-body"></div>
+  <div class="detail-footer"><button class="btn btn-ghost" style="flex:1" onclick="editFromDetail()">Edit</button><button class="btn btn-danger" onclick="deleteFromDetail()">Delete</button></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SK='dryq_crm_v3';
+const CC={'Run Club':'#22c55e','Run Event':'#3b82f6','Local Runner':'#f97316','Running Store':'#eab308','Ultra Community':'#f43f5e','Running Influencer':'#ec4899','Community Runner':'#06b6d4','Ultra Influencer':'#a855f7'};
+const CE={'Run Club':'🏃','Run Event':'🏁','Local Runner':'⚡','Running Store':'🏪','Ultra Community':'🏔','Running Influencer':'📱','Community Runner':'👥','Ultra Influencer':'🔥'};
+
+const SEED=[
+  {id:uid(),name:'Charlotte Running Co.',category:'Running Store',status:'Negotiating',assigned:'TT',location:'Charlotte, NC',instagram:'@charlotterunningco',audience:5000,engagement:8,turnout:0,locations:2,hub:true,contact:'Brad Popple / Matt Miles',email:'brad@charlotterunning.com',notes:'Brad organically offered to carry DryQ. Co-sponsored Mental Health Matters 5K. Matt Miles is events/biz dev + part owner of Chicken Legs + close friends with Andy Glaze & Matt Johnson (elite ultra runners). Follow up post-event on wholesale.'},
+  {id:uid(),name:'Supwell Running',category:'Run Club',status:'Partner',assigned:'JT',location:'Matthews, NC',instagram:'@supwellrunning',audience:8000,engagement:9,turnout:80,locations:0,hub:true,contact:'Yowana Wamala / Grant Reese',email:'',notes:'4 unprompted DryQ mentions. 7-min live unboxing on podcast. Called website "fire". Grant uses DryQ daily through frosted panel mid-run. Most valuable earned media relationship.'},
+  {id:uid(),name:'Mental Health Matters 5K',category:'Run Event',status:'Won',assigned:'JT',location:'Charlotte, NC',instagram:'',audience:300,engagement:7,turnout:300,locations:0,hub:true,contact:'Event Organizer',email:'',notes:'DryQ first event May 17 2026. Zero in-person sales but massive relationship value. Unlocked Matt Miles, Lindsey, Eric Smith connections. 50 new followers from Charlotte Running Co. giveaway.'},
+  {id:uid(),name:'Daniel Matena',category:'Local Runner',status:'Qualified',assigned:'JT',location:'Charlotte, NC',instagram:'@dan_matena',audience:500,engagement:9,turnout:0,locations:0,hub:true,contact:'Dan Matena',email:'',notes:'East Coast Sales Manager Altra Running. Former Balega Body Glide Nuun. Won Charlotte Half Marathon. Wife is ultra runner. Potential advisor — do NOT rush to formal equity. Lunch scheduled. Key connection to Feetures and all specialty retail.'},
+  {id:uid(),name:'Billy Shue',category:'Community Runner',status:'Contacted',assigned:'JT',location:'Charlotte, NC',instagram:'@billyshue',audience:800,engagement:8,turnout:0,locations:0,hub:true,contact:'Billy Shue',email:'',notes:'9x Boston Marathon qualifier. 18-mile field test. "Like a hand in a well-fit glove." Android fit issue flagged. Posting commitment. Ran Mental Health Matters 5K.'},
+  {id:uid(),name:'Grant Reese',category:'Running Influencer',status:'Partner',assigned:'JT',location:'Coppell, TX',instagram:'@grantreese',audience:3000,engagement:9,turnout:0,locations:0,hub:false,contact:'Grant Reese',email:'',notes:'First field tester. Texted Jeff mid-run through frosted panel — "this thing is amazing." 4x Supwell podcast mentions. Review committed on rundryq.com.'},
+  {id:uid(),name:'Chase Price',category:'Running Influencer',status:'Contacted',assigned:'JT',location:'Indian Trail, NC',instagram:'@chaserunner',audience:50000,engagement:7,turnout:0,locations:0,hub:true,contact:'Chase Price',email:'',notes:'Founder Casually Ambitious Performance Club. ~50k followers. Confirmed Ziploc runner. Recovering from 100-mile race. Production unit shipped. Pending content.'},
+  {id:uid(),name:'David Miller',category:'Running Influencer',status:'Contacted',assigned:'JT',location:'Philadelphia, PA',instagram:'@the_26.2',audience:9000,engagement:8,turnout:0,locations:0,hub:false,contact:'David Miller',email:'',notes:'Verified gear reviewer. Small business running product series. Production package shipped. Awaiting review post.'},
+  {id:uid(),name:'Terence Gerchberg',category:'Running Influencer',status:'Contacted',assigned:'JT',location:'New York, NY',instagram:'@terencegerchberg',audience:5000,engagement:7,turnout:0,locations:0,hub:false,contact:'Terence Gerchberg',email:'',notes:'CEO Back on My Feet. Found DryQ organically — followed, DMed, joined waitlist. Production unit shipped.'},
+  {id:uid(),name:'Andre Mendoza',category:'Running Influencer',status:'New',assigned:'JT',location:'New Jersey',instagram:'@getfitwithdre_',audience:34100,engagement:7,turnout:0,locations:0,hub:false,contact:'Andre Mendoza',email:'',notes:'Licensed & Certified Athletic Trainer, pro photographer, marathoner. Followed @rundryq from the ad. DM sent. Strong fit for gear review content.'},
+  {id:uid(),name:'Lindsey (Novant Health)',category:'Community Runner',status:'Contacted',assigned:'JT',location:'Charlotte, NC',instagram:'TBD',audience:1000,engagement:8,turnout:0,locations:0,hub:true,contact:'Lindsey',email:'',notes:'Top ambassador Novant Health Charlotte Marathon. Connected via Eric Smith → QC PT → event. Loves the recovery/dry lifestyle dual purpose. Invited DryQ to run clubs. Get last name + handle.'},
+  {id:uid(),name:'Eric Smith',category:'Community Runner',status:'Contacted',assigned:'JT',location:'Charlotte, NC',instagram:'',audience:300,engagement:7,turnout:0,locations:0,hub:true,contact:'Eric Smith',email:'',notes:'Charlotte runner. Cold outreach originally went nowhere. Reconnected organically at Mental Health Matters 5K via QC PT intro. Spoke highly of DryQ to Lindsey. Classic inbound > cold pattern.'},
+  {id:uid(),name:'Andy Glaze',category:'Ultra Community',status:'New',assigned:'JT',location:'Charlotte, NC',instagram:'',audience:2000,engagement:9,turnout:0,locations:0,hub:true,contact:'via Matt Miles',email:'',notes:'Elite ultra marathoner. Close friend of Matt Miles (Charlotte Running Co.). Facetimed Matt from start line of Cocodona 250 (250-mile race). Warm intro available via Matt.'},
+  {id:uid(),name:'Matt Johnson',category:'Ultra Community',status:'New',assigned:'JT',location:'Charlotte, NC',instagram:'',audience:1500,engagement:8,turnout:0,locations:0,hub:true,contact:'via Matt Miles',email:'',notes:'Elite ultra marathoner. Close friend of Matt Miles. Access via Charlotte Running Co. warm intro.'},
+  {id:uid(),name:'Feetures',category:'Running Store',status:'New',assigned:'JT',location:'Charlotte, NC',instagram:'@feetures',audience:40000,engagement:7,turnout:0,locations:3,hub:true,contact:'TBD via Dan Matena',email:'',notes:'Charlotte-based premium running sock brand. Natural co-marketing partner. @rundryq follows them. Dan Matena likely knows their team — ask at lunch.'},
+  {id:uid(),name:'Mad Miles Run Club',category:'Run Club',status:'New',assigned:'JT',location:'South End, Charlotte',instagram:'@madmilesrc',audience:109000,engagement:9,turnout:120,locations:0,hub:true,contact:'TBD',email:'',notes:'High-energy Charlotte run club. 109k audience. Connection via Armani McDonald (Charlotte Running Co. Dilworth).'},
+  {id:uid(),name:'Charlotte Running Club',category:'Run Club',status:'New',assigned:'Unassigned',location:'Uptown, Charlotte',instagram:'',audience:2500,engagement:7,turnout:200,locations:0,hub:true,contact:'TBD',email:'',notes:'Largest CLT club, diverse membership. Uptown location. High weekly turnout.'},
+  {id:uid(),name:'Release Recovery Foundation',category:'Run Club',status:'Contacted',assigned:'JT',location:'National',instagram:'',audience:12000,engagement:8,turnout:50,locations:0,hub:false,contact:'Doug Levy',email:'doug@releaserecoveryfoundation.org',notes:'Primary nonprofit partner candidate. Running is their core program. NYC Marathon charity partner 5 years. "Dry" brand alignment is direct. Outreach email sent April 4 2026. Awaiting reply from Doug Levy.'},
+  {id:uid(),name:'Run For Your Life',category:'Running Store',status:'New',assigned:'TT',location:'Dilworth, Charlotte',instagram:'',audience:3500,engagement:7,turnout:0,locations:3,hub:true,contact:'TBD',email:'',notes:'3 NC locations. Community-focused specialty running shop. High priority Charlotte hub wholesale target.'},
+  {id:uid(),name:'Kara Molitor',category:'Community Runner',status:'Contacted',assigned:'JT',location:'Unknown',instagram:'@runnergirl2010',audience:5000,engagement:8,turnout:0,locations:0,hub:false,contact:'Kara Molitor',email:'',notes:'Loudest Instagram advocate for transparent front panel. Her feedback directly drove the V2/frosted pivot. High community trust and engagement.'},
+
+  // ── BACK ON MY FEET ───────────────────────────────────────────────────────
+  {id:uid(),name:'Back on My Feet',category:'Community Runner',status:'Negotiating',assigned:'JT',location:'National (16 cities)',instagram:'@backonmyfeet',audience:85000,reach:500,engagement:8,turnout:0,locations:0,hub:false,contact:'Terence Gerchberg (CEO)',email:'',notes:'National nonprofit using running to help people experiencing homelessness. Terence (CEO) found DryQ organically — followed, DMed, joined waitlist. Production unit shipped. 16 city chapters, NYC Marathon charity partner. "Dry" lifestyle connection is secondary to homelessness mission but Terence is a genuine ambassador. Negotiating donation/partnership structure. Revenue model: ~500 reach (staff + core community who would actually buy).'},
+
+  // ── NEW RUN CLUBS ─────────────────────────────────────────────────────────
+  {id:uid(),name:'Mad Miles Run Club',category:'Run Club',status:'New',assigned:'JT',location:'South End, Charlotte',instagram:'@madmilesrunclub',audience:113000,engagement:9,turnout:120,locations:0,hub:true,contact:'TBD',email:'',notes:'Largest Charlotte run club by Instagram following — 113k followers. Mon/Tue/Sat runs at Social Status and Camp North End. High-energy diverse community. Connection via Armani McDonald (Charlotte Running Co.). Highest priority CLT run club.'},
+  {id:uid(),name:'Morning Miles Run Club',category:'Run Club',status:'New',assigned:'TT',location:'Charlotte, NC',instagram:'@morningmiles_official',audience:21000,engagement:8,turnout:60,locations:0,hub:true,contact:'TBD',email:'',notes:'Charlotte fitness run club. 21k followers. Thursdays 6am, 3001 Griffith St. Founded by @chadcope and @hugheschristian94. Coffee culture vibe — strong engaged community.'},
+  {id:uid(),name:'Black Men Run Charlotte',category:'Run Club',status:'New',assigned:'JT',location:'Charlotte, NC',instagram:'@blackmenrun_clt',audience:3000,engagement:8,turnout:80,locations:0,hub:true,contact:'C.J. Langley',email:'',notes:'Chapter of national Black Men Run org. Mon/Wed/Fri + Saturdays. Partners with Charlotte Running Co. on 1st Saturday runs. Mission-aligned — community, health, brotherhood. Diverse underserved demographic for running brands. Recovery lifestyle connection possible.'},
+  {id:uid(),name:'Sycamore Brewing Run Club',category:'Run Club',status:'New',assigned:'TT',location:'South End, Charlotte',instagram:'@sycamorebrewing',audience:15000,engagement:7,turnout:50,locations:0,hub:true,contact:'TBD',email:'',notes:'Brewery-based run club South End. Wed 6:30pm. Craft beer + miles culture. Ideal DryQ demographic — active social runners who value gear.'},
+  {id:uid(),name:'NoDa Brewing Run Club',category:'Run Club',status:'New',assigned:'TT',location:'NoDa, Charlotte',instagram:'@nodabrewing',audience:25000,engagement:7,turnout:60,locations:0,hub:true,contact:'TBD',email:'',notes:'NoDa Brewing run club North End. Sundays 12pm. Also hosts the annual NoDa 5K (2,000 runners). High visibility in Charlotte running community.'},
+  {id:uid(),name:'Triple C Brewing Run Club',category:'Run Club',status:'New',assigned:'Unassigned',location:'South End, Charlotte',instagram:'@triplecbrewing',audience:18000,engagement:7,turnout:40,locations:0,hub:true,contact:'TBD',email:'',notes:'South End brewery run club. Thu 6:30pm. Part of the Charlotte brewery run club circuit.'},
+  {id:uid(),name:'Flying Biscuit Run Club',category:'Run Club',status:'New',assigned:'Unassigned',location:'Charlotte, NC',instagram:'@flyingbiscuitrunclub',audience:2000,engagement:7,turnout:30,locations:0,hub:true,contact:'TBD',email:'',notes:'Sunday morning run club. AM runs. Listed on Charlotte Running Co. passport program. Community-oriented, lifestyle-focused.'},
+
+  // ── NEW RUN EVENTS ────────────────────────────────────────────────────────
+  {id:uid(),name:'Around the Crown 10K',category:'Run Event',status:'New',assigned:'JT',location:'Uptown, Charlotte',instagram:'@aroundthecrown10k',audience:8000,engagement:8,turnout:5000,locations:0,hub:true,contact:'Crown Collective',email:'',notes:'Iconic Charlotte race — runs on I-277, shuts down the uptown loop. Sep 6 2026. 5,000+ runners. Crown Collective organization. Largest annual running event in Charlotte. Key sponsorship and expo booth opportunity.'},
+  {id:uid(),name:'NoDa 5K',category:'Run Event',status:'New',assigned:'TT',location:'NoDa, Charlotte',instagram:'@nodabrewing',audience:5000,engagement:8,turnout:2000,locations:0,hub:true,contact:'Crown Collective',email:'',notes:'2,000 runner loop race starting/ending at NoDa Brewing. May 30 2026. Crown Collective event. Beer and food after. Great DryQ brand environment.'},
+  {id:uid(),name:'Novant Health Charlotte Marathon',category:'Run Event',status:'Contacted',assigned:'JT',location:'Charlotte, NC',instagram:'@charlottemarathon',audience:11000,engagement:8,turnout:10000,locations:0,hub:true,contact:'Charlotte Sports Foundation',email:'',notes:'THE Charlotte Marathon. Nov 14 2026. Marathon, Half, and 5K. 10k+ runners. Benefits Hemby Children\'s Hospital. Lindsey is a top Novant Health ambassador — existing warm connection. Major expo and sponsorship opportunity.'},
+  {id:uid(),name:'Charlotte Racefest',category:'Run Event',status:'New',assigned:'TT',location:'Charlotte, NC',instagram:'@charlotteracefest',audience:4000,engagement:7,turnout:3000,locations:0,hub:true,contact:'Crown Collective',email:'',notes:'25th running in 2026. Taken over by Crown Collective. Spring half + 10K at Symphony Park. Growing under new management.'},
+  {id:uid(),name:'WC-50 Ultra Trail Marathon',category:'Run Event',status:'New',assigned:'JT',location:'Charlotte, NC',instagram:'',audience:500,engagement:8,turnout:400,locations:0,hub:true,contact:'TBD',email:'',notes:'Local ultra trail marathon. Oct 3 2026. Strong ultra community crossover — connects DryQ to trail and ultra runners in the Charlotte area.'},
+
+  // ── NEW RUNNING STORES ────────────────────────────────────────────────────
+  {id:uid(),name:'Fleet Feet Charlotte',category:'Running Store',status:'New',assigned:'JT',location:'Myers Park / 6 locations, Charlotte',instagram:'@fleetfeetcharlotte',audience:8000,engagement:7,turnout:0,locations:6,hub:true,contact:'TBD via Dan Matena (Altra)',email:'',notes:'6 Charlotte market locations. Originally The Ultra Running Co. — acquired by Fleet Feet 2023. Dan Matena manages their Altra account on the East Coast. He is the warm intro path. Largest specialty running retail presence in Charlotte. Priority #1 wholesale target after Charlotte Running Co. Do NOT approach cold — go through Dan.'},
+  {id:uid(),name:'Chicken Legs Running',category:'Running Store',status:'Contacted',assigned:'JT',location:'Charlotte, NC',instagram:'@chicknlegsrunning',audience:5000,engagement:8,turnout:0,locations:1,hub:true,contact:'Matt Miles (part owner)',email:'',notes:'Charlotte specialty running apparel brand. Matt Miles (Charlotte Running Co. events/biz dev) is a part owner. Already have a warm relationship. Natural co-marketing and retail opportunity.'},
+  {id:uid(),name:'Running Warehouse',category:'Running Store',status:'New',assigned:'JT',location:'National / Online',instagram:'@runningwarehouse',audience:95000,engagement:7,turnout:0,locations:1,hub:false,contact:'TBD',email:'',notes:'Largest online specialty running retailer. National reach. A placement here signals serious brand legitimacy. Long-term target — requires strong reviews and retail references (Charlotte Running Co., Fleet Feet) first.'},
+  {id:uid(),name:'Road Runner Sports',category:'Running Store',status:'New',assigned:'Unassigned',location:'National',instagram:'@roadrunnersports',audience:120000,engagement:6,turnout:0,locations:40,hub:false,contact:'TBD',email:'',notes:'40 locations nationally. Large specialty running retail chain. Mid-term wholesale target. Build DTC traction and retail references first.'},
+
+  // ── NEW ULTRA COMMUNITY ───────────────────────────────────────────────────
+  {id:uid(),name:'Rachel Entrekin',category:'Ultra Influencer',status:'New',assigned:'JT',location:'Birmingham, AL',instagram:'@rachelentrekin',audience:45000,engagement:9,turnout:0,locations:0,hub:false,contact:'Rachel Entrekin',email:'',notes:'2024 and 2025 Cocodona 250 women\'s champion. Set course record in 2026 (56:09:48). Rising star, more accessible than top-tier names. Authentic, high engagement. Ultra runners need phone protection on long efforts — perfect fit.'},
+  {id:uid(),name:'Joe McConaughy (Stringbean)',category:'Ultra Influencer',status:'New',assigned:'JT',location:'National',instagram:'@joemcconaughy',audience:35000,engagement:8,turnout:0,locations:0,hub:false,contact:'Joe McConaughy',email:'',notes:'2022 Cocodona 250 champion. Known as "Stringbean." Speed records on AT and PCT. Highly engaged ultra community. Authentic storyteller. Warm connection possible through Cocodona 250 community network.'},
+  {id:uid(),name:'iRunFar',category:'Ultra Community',status:'New',assigned:'JT',location:'National / Online',instagram:'@irunfar',audience:180000,engagement:8,turnout:0,locations:0,hub:false,contact:'Bryon Powell',email:'',notes:'Premier ultra trail running media outlet. 180k followers. Covers all major ultra events including Cocodona, Western States, UTMB. A product feature or review here reaches the entire serious ultra running community. High-value media target once DryQ has traction.'},
+  {id:uid(),name:'UltraRunning Magazine',category:'Ultra Community',status:'New',assigned:'JT',location:'National / Online',instagram:'@ultrarunningmag',audience:25000,engagement:7,turnout:0,locations:0,hub:false,contact:'TBD',email:'',notes:'The definitive ultra running print and digital magazine. Product review or placement builds brand credibility in the ultra community. Longer-term PR target.'},
+  {id:uid(),name:'Cocodona 250',category:'Ultra Community',status:'New',assigned:'JT',location:'Arizona',instagram:'@cocodona250',audience:141000,engagement:9,turnout:400,locations:0,hub:false,contact:'Jamil Coury, Aravaipa Running',email:'',notes:'The 250-mile ultra through Arizona. 141k followers. 400 runners annually. Connection via Andy Glaze (close friend of Matt Miles, competed there). Major sponsorship opportunity in ultra community — phones are critical safety tools on 250-mile efforts.'},
+
+  // ── NEW RUNNING INFLUENCERS ───────────────────────────────────────────────
+  {id:uid(),name:'Hellah Sidibe (RunWithHellah)',category:'Running Influencer',status:'New',assigned:'JT',location:'National',instagram:'@runwithhellah',audience:250000,engagement:9,turnout:0,locations:0,hub:false,contact:'Hellah Sidibe',email:'',notes:'Has not missed a day of running since 2017. 250k followers. Combines endurance, positivity, and activism. Runs a nonprofit. Mission-driven audience — "Dry is a lifestyle" recovery story would resonate strongly.'},
+  {id:uid(),name:'Rachel Holloway (@Glamamazonian)',category:'Running Influencer',status:'New',assigned:'JT',location:'Charlotte, NC',instagram:'@glamamazonian',audience:8000,engagement:8,turnout:0,locations:0,hub:true,contact:'Rachel Holloway',email:'',notes:'Charlotte-based runner, diversity/inclusion advocate, women\'s empowerment. Background in nonprofit and communications leadership. Featured on Running Around Charlotte podcast. Deeply embedded in CLT running community. Local, authentic, mission-aligned.'},
+  {id:uid(),name:'Running Around Charlotte Podcast',category:'Community Runner',status:'New',assigned:'JT',location:'Charlotte, NC',instagram:'',audience:5000,engagement:8,turnout:0,locations:0,hub:true,contact:'TBD',email:'',notes:'Local Charlotte running podcast. Features Charlotte community members. Potential podcast sponsorship or feature. Reaches local engaged running audience directly.'},
+
+  // ── NEW COMMUNITY RUNNERS ─────────────────────────────────────────────────
+  {id:uid(),name:'Armani McDonald',category:'Community Runner',status:'New',assigned:'TT',location:'Charlotte, NC',instagram:'',audience:800,engagement:8,turnout:0,locations:0,hub:true,contact:'Armani McDonald',email:'',notes:'Manager at Charlotte Running Co. Dilworth. Mad Miles Run Club member. Boston Marathon runner. Bridge between Charlotte Running Co. AND Mad Miles. Key relationship for both retail and run club access. Not a prototype tester at this phase — revisit when production units are live.'},
+  {id:uid(),name:'Stephanie Buettner',category:'Community Runner',status:'New',assigned:'JT',location:'Charlotte, NC',instagram:'@stephanieb.myomotion',audience:3000,engagement:8,turnout:0,locations:0,hub:true,contact:'Stephanie Buettner',email:'',notes:'Charlotte community runner. @stephanieb.myomotion on Instagram. Myomotion connection. Engaged Charlotte running community member. Flagged as potential influencer tester.'},
+];
+
+function uid(){return Date.now().toString(36)+Math.random().toString(36).substr(2,9);}
+let leads=[],currentCat='all',currentStatus='all',currentView='pipeline',editingId=null,detailId=null;
+function load(){const s=localStorage.getItem(SK);if(s){leads=JSON.parse(s);}else{leads=SEED;save();}}
+function save(){localStorage.setItem(SK,JSON.stringify(leads));}
+
+function calcScore(c){
+  let s=0;
+  s+=(Number(c.engagement)||5)*6;
+  const a=Number(c.audience)||0;
+  if(a>100000)s+=20;else if(a>50000)s+=15;else if(a>10000)s+=10;else if(a>1000)s+=5;
+  if(c.hub)s+=10;
+  const stg=['Won','Partner','Negotiating','Qualified','Contacted','New','Lost'];
+  s+=Math.max(0,(5-stg.indexOf(c.status))*3);
+  return Math.min(100,Math.round(s));
+}
+
+function calcRev(c){
+  const hub=c.hub?1.25:1;
+  const a=Number(c.audience)||0;
+  // reach = manually set engaged buyer pool (separate from raw follower count)
+  // for mega influencers, audience != buyers — use reach to cap realistically
+  const reach=Number(c.reach)||0;
+  let r=0;
+  if(c.category==='Run Club'){
+    r=(Number(c.turnout)||Math.min(Math.round(a*.05),150)||50)*.10*28*52;
+  } else if(c.category==='Running Store'){
+    // units per restock scales with engagement (how well they'll actually sell it)
+    // engagement 5=15u, 7=21u, 9=27u per location per restock
+    const unitsPerRestock = Math.round(((Number(c.engagement)||5)/10)*30);
+    // CLT hub stores get 6 restocks/yr (higher local traffic), others get 4
+    const restocksPerYear = c.hub ? 6 : 4;
+    r=(Number(c.locations)||1)*unitsPerRestock*14*restocksPerYear;
+  } else if(c.category==='Running Influencer'){
+    // 0.2% conversion on engaged reach (or 10% of audience as proxy if reach not set)
+    const pool=reach||Math.min(a*.10,5000);
+    r=pool*.002*28*2;
+  } else if(c.category==='Ultra Influencer'){
+    // Ultra niche = higher engagement, smaller effective buyer pool
+    // reach manually set, or cap at 8% of following max 8k
+    const pool=reach||Math.min(a*.08,8000);
+    r=pool*.003*28*2;
+  } else if(c.category==='Ultra Community'){
+    // Real community members who might buy — use reach or cap audience at 1k
+    const pool=reach||Math.min(a,1000);
+    r=pool*.05*28;
+  } else if(c.category==='Community Runner'){
+    const pool=reach||Math.min(a,300);
+    r=pool*.05*28;
+  } else if(c.category==='Run Event'){
+    r=(Number(c.turnout)||200)*.05*28;
+  } else if(c.category==='Local Runner'){
+    const pool=reach||Math.min(a,200);
+    r=pool*.10*28;
+  }
+  return Math.round(r*hub);
+}
+
+function tier(s){return s>=70?'High':s>=40?'Medium':'Low';}
+
+function setView(v,navEl,src){
+  currentView=v;
+  ['pipeline','table','revenue'].forEach(x=>{
+    const el=document.getElementById('view-'+x);
+    if(el)el.style.display=x===v?'block':'none';
+  });
+  document.querySelectorAll('[data-vtab]').forEach(t=>t.classList.toggle('active',t.dataset.vtab===v));
+  document.querySelectorAll('[data-view]').forEach(n=>n.classList.toggle('active',n.dataset.view===v));
+  const titles={pipeline:'Pipeline',table:'All Leads',revenue:'Revenue Model'};
+  document.getElementById('page-title').textContent=titles[v]||v;
+  render();
+}
+
+function setCat(cat,navEl,statId){
+  currentCat=cat;
+  document.querySelectorAll('[data-cat]').forEach(el=>el.classList.toggle('active',el.dataset.cat===cat));
+  document.querySelectorAll('.stat-card').forEach(el=>el.classList.remove('act'));
+  const sid=statId||(cat==='all'?'s-all':null);
+  if(sid)document.getElementById(sid)?.classList.add('act');
+  render();
+}
+
+function setStatus(s,el){
+  currentStatus=s;
+  document.querySelectorAll('[data-status]').forEach(c=>c.classList.toggle('act',c.dataset.status===s));
+  render();
+}
+
+function getFiltered(){
+  const q=document.getElementById('search-input').value.toLowerCase().trim();
+  return leads.filter(c=>{
+    const catOk=currentCat==='all'||c.category===currentCat;
+    const statOk=currentStatus==='all'||c.status===currentStatus;
+    const qOk=!q||[c.name,c.category,c.location,c.contact,c.notes,c.instagram].some(f=>(f||'').toLowerCase().includes(q));
+    return catOk&&statOk&&qOk;
+  }).sort((a,b)=>calcScore(b)-calcScore(a));
+}
+
+function render(){
+  updateCounts();
+  updateKPIs();
+  if(currentView==='pipeline')renderPipeline();
+  else if(currentView==='table')renderTable();
+  else if(currentView==='revenue')renderRevenue();
+}
+
+function updateCounts(){
+  const ct=cat=>leads.filter(l=>l.category===cat).length;
+  document.getElementById('n-rc').textContent=ct('Run Club');
+  document.getElementById('n-re').textContent=ct('Run Event');
+  document.getElementById('n-lr').textContent=ct('Local Runner');
+  document.getElementById('n-rs').textContent=ct('Running Store');
+  document.getElementById('n-um').textContent=ct('Ultra Community');
+  document.getElementById('n-ri').textContent=ct('Running Influencer');
+  document.getElementById('n-cr').textContent=ct('Community Runner');
+  document.getElementById('n-ui').textContent=ct('Ultra Influencer');
+  document.getElementById('sn-all').textContent=leads.length;
+  ['rc','re','lr','rs','um','ri','cr'].forEach(k=>{
+    const map={rc:'Run Club',re:'Run Event',lr:'Local Runner',rs:'Running Store',um:'Ultra Community',ri:'Running Influencer',cr:'Community Runner'};
+    document.getElementById('sn-'+k).textContent=ct(map[k]);
+  });
+}
+
+function updateKPIs(){
+  document.getElementById('kpi-total').textContent=leads.length;
+  document.getElementById('kpi-high').textContent=leads.filter(l=>calcScore(l)>=70).length;
+  document.getElementById('kpi-clt').textContent=leads.filter(l=>l.hub).length;
+  const total=leads.reduce((s,l)=>s+calcRev(l),0);
+  document.getElementById('kpi-rev').textContent='$'+total.toLocaleString();
+  document.getElementById('rv-total').textContent='$'+total.toLocaleString();
+  document.getElementById('rv-clt').textContent=leads.filter(l=>l.hub).length;
+}
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function catBadge(cat){const c=CC[cat]||'#888';return `<span class="cat-b" style="background:${c}18;color:${c};border:1px solid ${c}30;">${CE[cat]||'•'} ${esc(cat)}</span>`;}
+function statBadge(s){const cls={New:'sn',Contacted:'sc',Qualified:'sq',Negotiating:'sne',Won:'sw',Partner:'sp',Lost:'sl'}[s]||'sn';return `<span class="stat-b ${cls}">${s}</span>`;}
+function priBadge(score){const t=tier(score);const cls={High:'ph',Medium:'pm',Low:'pl'}[t];return `<span class="pri-b ${cls}">${t}</span>`;}
+
+function renderPipeline(){
+  const stages=['New','Contacted','Qualified','Negotiating','Won','Lost'];
+  const filtered=getFiltered();
+  document.getElementById('pipeline-body').innerHTML=stages.map(stage=>{
+    const cards=filtered.filter(l=>l.status===stage||(stage==='Won'&&l.status==='Partner'));
+    const label=stage==='Won'?'Won / Partner':stage;
+    return `<div class="pcol"><div class="pcol-title">${label}<span>${cards.length}</span></div>
+    ${cards.map(c=>{const score=calcScore(c);const col=CC[c.category]||'#888';
+    return `<div class="pcard" onclick="openDetail('${c.id}')">
+      <div class="pcard-name">${esc(c.name)}</div>
+      <div class="pcard-cat" style="color:${col}">${esc(c.category)}</div>
+      ${c.hub?'<span class="hub-b">CLT Hub</span>':''}
+      <div class="pcard-score" style="color:${score>=70?'#ef4444':score>=40?'#eab308':'#3b82f6'}">${score}/100 · $${calcRev(c).toLocaleString()}/yr</div>
+    </div>`;}).join('')}</div>`;
+  }).join('');
+}
+
+function renderTable(){
+  const filtered=getFiltered();
+  if(!filtered.length){document.getElementById('table-body').innerHTML=`<div class="empty-state"><div class="empty-big">∅</div>No leads found.</div>`;return;}
+  document.getElementById('table-body').innerHTML=filtered.map((c,i)=>{
+    const score=calcScore(c);const rev=calcRev(c);
+    const pc=score>=70?'#ef4444':score>=40?'#eab308':'#3b82f6';
+    return `<div class="tbl-row" onclick="openDetail('${c.id}')">
+      <div class="tbl-num">${i+1}</div>
+      <div><div class="cname">${esc(c.name)} ${c.hub?'<span class="hub-b">CLT</span>':''}</div><div class="csub">${esc(c.instagram||c.location||'')}</div></div>
+      <div>${catBadge(c.category)}</div>
+      <div>${statBadge(c.status)}</div>
+      <div class="tbl-cell">${esc(c.location||'—')}</div>
+      <div class="tbl-cell">${c.audience?Number(c.audience).toLocaleString():'—'}</div>
+      <div><div style="font-family:'DM Mono',monospace;font-size:12px;font-weight:700;color:${pc}">${score}</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:#22c55e">$${rev.toLocaleString()}/yr</div></div>
+      <div class="row-actions" onclick="event.stopPropagation()">
+        <button class="icon-btn" onclick="openModal('${c.id}')" title="Edit">✎</button>
+        <button class="icon-btn del" onclick="deleteLead('${c.id}')" title="Delete">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderRevenue(){
+  const cats=Object.keys(CC);
+  const totals={};
+  leads.forEach(l=>{totals[l.category]=(totals[l.category]||0)+calcRev(l);});
+  document.getElementById('rev-grid').innerHTML=cats.map(cat=>{
+    const catLeads=leads.filter(l=>l.category===cat).sort((a,b)=>calcRev(b)-calcRev(a));
+    if(!catLeads.length)return '';
+    const formulaMap={'Run Club':'Turnout × 10% × $28 × 52 wks','Running Store':'Locs × 15u × $14 × 4 restocks','Running Influencer':'Audience × 0.5% × $28 × 2 posts','Ultra Influencer':'Audience × 0.5% × $28 × 2 posts','Ultra Community':'Community × 8% × $28','Community Runner':'Reach × 5% × $28','Run Event':'Turnout × 5% × $28','Local Runner':'Reach × 10% × $28'};
+    const col=CC[cat];
+    return `<div class="rev-card"><div class="rev-card-title" style="color:${col}">${CE[cat]||''} ${cat}</div>
+    <div class="rev-formula">${formulaMap[cat]||''}</div>
+    ${catLeads.slice(0,4).map(l=>`<div class="rev-row"><span>${esc(l.name.length>20?l.name.substring(0,20)+'…':l.name)}</span><span style="color:#22c55e">$${calcRev(l).toLocaleString()}</span></div>`).join('')}
+    ${catLeads.length>4?`<div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);padding:4px 0;">+${catLeads.length-4} more</div>`:''}
+    <div class="rev-row" style="margin-top:4px;border-top:1px solid var(--border);"><span>Subtotal</span><span style="color:#22c55e">$${(totals[cat]||0).toLocaleString()}</span></div></div>`;
+  }).filter(Boolean).join('');
+  const max=Math.max(...Object.values(totals),1);
+  document.getElementById('bar-chart').innerHTML=cats.filter(c=>totals[c]).map(cat=>{
+    const pct=Math.round((totals[cat]/max)*100);
+    return `<div class="bar-col"><div class="bar-val">$${Math.round(totals[cat]/1000)}k</div><div class="bar" style="height:${Math.max(pct,2)}%;background:${CC[cat]}"></div><div class="bar-label">${cat.split(' ')[0]}</div></div>`;
+  }).join('');
+}
+
+function openDetail(id){
+  detailId=id;const c=leads.find(x=>x.id===id);if(!c)return;
+  const score=calcScore(c);const rev=calcRev(c);const pc=score>=70?'#ef4444':score>=40?'#eab308':'#3b82f6';
+  document.getElementById('d-name').textContent=c.name;
+  document.getElementById('d-badges').innerHTML=catBadge(c.category)+' '+statBadge(c.status)+(c.hub?' <span class="hub-b">CLT Hub</span>':'');
+  document.getElementById('d-score-disp').innerHTML=`<div style="flex:1"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);margin-bottom:4px;">PRIORITY SCORE</div><div class="score-bar"><div class="score-fill" style="width:${score}%;background:${pc}"></div></div></div><div style="font-family:'DM Mono',monospace;font-size:18px;font-weight:700;color:${pc};margin-left:10px;">${score}</div>`;
+  const fields=[['Contact',c.contact],['Instagram',c.instagram],['Email',c.email],['Location',c.location],['Assigned',c.assigned],['Audience',c.audience?Number(c.audience).toLocaleString():null],['Engagement',c.engagement+'/10'],['Est. 12mo Rev','$'+rev.toLocaleString()]].filter(([,v])=>v);
+  document.getElementById('d-body').innerHTML=(fields.length?`<div class="dsec-label">Contact Info</div>${fields.map(([k,v])=>`<div class="d-row"><span class="d-key">${k}</span><span class="d-val">${esc(v)}</span></div>`).join('')}`:'')+( c.notes?`<div class="dsec-label">Notes</div><div class="dnotes">${esc(c.notes)}</div>`:'');
+  document.getElementById('detail').classList.add('open');
+}
+
+function closeDetail(){document.getElementById('detail').classList.remove('open');detailId=null;}
+function editFromDetail(){if(detailId)openModal(detailId);}
+function deleteFromDetail(){if(detailId){deleteLead(detailId);closeDetail();}}
+
+function openModal(id=null){
+  editingId=id;
+  document.getElementById('modal-title').textContent=id?'Edit Lead':'Add Lead';
+  ['name','cat','location','instagram','email','contact','notes'].forEach(f=>{const el=document.getElementById('f-'+f);if(el)el.value='';});
+  document.getElementById('f-status').value='New';
+  document.getElementById('f-assigned').value='Unassigned';
+  document.getElementById('f-engagement').value=5;
+  document.getElementById('f-eng-val').textContent=5;
+  document.getElementById('f-hub').checked=false;
+  document.getElementById('f-audience').value='';
+  document.getElementById('f-reach').value='';
+  document.getElementById('f-turnout').value='';
+  document.getElementById('f-locations').value=1;
+  if(id){
+    const c=leads.find(x=>x.id===id);
+    if(c){
+      ['name','location','instagram','email','contact','notes'].forEach(f=>{const el=document.getElementById('f-'+f);if(el)el.value=c[f]||'';});
+      document.getElementById('f-cat').value=c.category||'';
+      document.getElementById('f-status').value=c.status||'New';
+      document.getElementById('f-assigned').value=c.assigned||'Unassigned';
+      document.getElementById('f-audience').value=c.audience||'';
+      document.getElementById('f-reach').value=c.reach||'';
+      document.getElementById('f-turnout').value=c.turnout||'';
+      document.getElementById('f-locations').value=c.locations||1;
+      document.getElementById('f-engagement').value=c.engagement||5;
+      document.getElementById('f-eng-val').textContent=c.engagement||5;
+      document.getElementById('f-hub').checked=!!c.hub;
+    }
+  }
+  document.getElementById('overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('f-name').focus(),200);
+}
+
+function closeModal(){document.getElementById('overlay').classList.remove('open');editingId=null;}
+function handleOverlay(e){if(e.target===document.getElementById('overlay'))closeModal();}
+
+function saveLead(){
+  const name=document.getElementById('f-name').value.trim();
+  const cat=document.getElementById('f-cat').value;
+  if(!name){toast('Name is required','error');return;}
+  if(!cat){toast('Lead type is required','error');return;}
+  const data={name,category:cat,status:document.getElementById('f-status').value,assigned:document.getElementById('f-assigned').value,location:document.getElementById('f-location').value.trim(),instagram:document.getElementById('f-instagram').value.trim(),audience:Number(document.getElementById('f-audience').value)||0,turnout:Number(document.getElementById('f-turnout').value)||0,reach:Number(document.getElementById('f-reach').value)||0,locations:Number(document.getElementById('f-locations').value)||1,email:document.getElementById('f-email').value.trim(),contact:document.getElementById('f-contact').value.trim(),notes:document.getElementById('f-notes').value.trim(),engagement:Number(document.getElementById('f-engagement').value)||5,hub:document.getElementById('f-hub').checked};
+  if(editingId){const idx=leads.findIndex(c=>c.id===editingId);if(idx!==-1)leads[idx]={...leads[idx],...data};toast('Lead updated','success');}
+  else{leads.push({id:uid(),...data});toast('Lead added','success');}
+  save();closeModal();render();
+  if(detailId&&detailId===editingId)openDetail(detailId);
+}
+
+function deleteLead(id){
+  if(!confirm('Delete this lead?'))return;
+  leads=leads.filter(c=>c.id!==id);save();render();toast('Deleted','success');
+}
+
+let toastTimer;
+function toast(msg,type='success'){
+  const el=document.getElementById('toast');
+  el.textContent=(type==='success'?'✓ ':'✕ ')+msg;
+  el.className='toast show';
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),2400);
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){closeModal();closeDetail();}
+  if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();document.getElementById('search-input').focus();}
+});
+
+load();render();
+</script>
+</body>
+</html>
