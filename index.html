@@ -1250,22 +1250,36 @@ function lcBadge(dateStr){
 let todos=[], reminders=[], top10=[], pie=[], devNotes=[];
 
 // ── SUPABASE HELPERS FOR MODULES ──────────────────────────────────────────────
-async function sbTable(table,opts={}){
-  return sbFetch(table,opts);
+async function upsertRow(table, row){
+  try{
+    // Use fetch directly so we control all headers cleanly
+    const res = await fetch(SB_URL+'/rest/v1/'+table, {
+      method: 'POST',
+      headers: {
+        'apikey': SB_KEY,
+        'Authorization': 'Bearer '+SB_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify(row)
+    });
+    if(!res.ok){ const e=await res.text(); console.error('Upsert error',table,e); }
+  }catch(e){ console.error('Upsert error',table,e); }
 }
 
-async function upsertRow(table,row){
+async function deleteRow(table, id){
   try{
-    await sbFetch(table,{method:'POST',prefer:'return=minimal',
-      headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
-      body:JSON.stringify(row)});
-  }catch(e){console.error('Upsert error',table,e);}
-}
-
-async function deleteRow(table,id){
-  try{
-    await sbFetch(table+'?id=eq.'+id,{method:'DELETE',prefer:'return=minimal'});
-  }catch(e){console.error('Delete error',table,e);}
+    const res = await fetch(SB_URL+'/rest/v1/'+table+'?id=eq.'+id, {
+      method: 'DELETE',
+      headers: {
+        'apikey': SB_KEY,
+        'Authorization': 'Bearer '+SB_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      }
+    });
+    if(!res.ok){ const e=await res.text(); console.error('Delete error',table,e); }
+  }catch(e){ console.error('Delete error',table,e); }
 }
 
 async function loadModules(){
