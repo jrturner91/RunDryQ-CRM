@@ -841,8 +841,7 @@ async function load(){
   }catch(e){
     console.error('Load error:',e);
     toast('DB connection failed — using local data','error');
-    const s=localStorage.getItem(SK);
-    leads=s?JSON.parse(s):SEED;
+    leads=SEED;
   }finally{
     showLoading(false);
     render();
@@ -865,7 +864,6 @@ async function seedDB(){
 async function save(lead){
   if(!lead)return;
   try{
-    // Upsert single lead
     await sbFetch('leads?id=eq.'+lead.id,{
       method:'PATCH',
       prefer:'return=minimal',
@@ -873,7 +871,17 @@ async function save(lead){
     });
   }catch(e){
     console.error('Save error:',e);
-    toast('Save failed','error');
+    // Try upsert as fallback
+    try{
+      await sbFetch('leads',{
+        method:'POST',
+        headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
+        prefer:'return=minimal',
+        body:JSON.stringify(lead)
+      });
+    }catch(e2){
+      toast('Save failed — check connection','error');
+    }
   }
 }
 
@@ -1238,64 +1246,86 @@ function lcBadge(dateStr){
   return `<span class="lc-cell lc-ok">${days===0?'today':days+'d ago'}</span>`;
 }
 
-// ── LOCAL STORAGE KEYS FOR MODULES ───────────────────────────────────────────
-const SK_TODO = 'dryq_todos_v1';
-const SK_REM  = 'dryq_reminders_v1';
-const SK_TOP  = 'dryq_top10_v1';
-const SK_PIE  = 'dryq_pie_v1';
-const SK_DEV  = 'dryq_devnotes_v1';
-
+// ── MODULE DATA ───────────────────────────────────────────────────────────────
 let todos=[], reminders=[], top10=[], pie=[], devNotes=[];
 
-function loadModules(){
-  todos      = JSON.parse(localStorage.getItem(SK_TODO)||'[]');
-  reminders  = JSON.parse(localStorage.getItem(SK_REM)||'[]');
-  top10      = JSON.parse(localStorage.getItem(SK_TOP)||'[]');
-  pie        = JSON.parse(localStorage.getItem(SK_PIE)||'[]');
-  devNotes   = JSON.parse(localStorage.getItem(SK_DEV)||'[]');
+// ── SUPABASE HELPERS FOR MODULES ──────────────────────────────────────────────
+async function sbTable(table,opts={}){
+  return sbFetch(table,opts);
+}
 
-  // Seed Top 10 with known priority targets
-  if(!top10.length){
-    top10=[
-      {id:uid(),name:'Fleet Feet Charlotte',why:'6 CLT locations — Dan Matena warm intro'},
-      {id:uid(),name:'Mad Miles Run Club',why:'Largest CLT club, 113k following'},
-      {id:uid(),name:'Charlotte Marathon',why:'10k runners, Lindsey connection'},
-      {id:uid(),name:'Matt Miles',why:'Key to Andy Glaze + ultra network'},
-      {id:uid(),name:'Dan Matena lunch',why:'Altra/Fleet Feet/Feetures intro path'},
-      {id:uid(),name:'Around the Crown 10K',why:'5,000 runners, Sep 2026 event'},
-      {id:uid(),name:'Grant Reese review',why:'Review committed on rundryq.com'},
-      {id:uid(),name:'David Miller post',why:'@the_26.2 gear review pending'},
-      {id:uid(),name:'Release Recovery Foundation',why:'Best nonprofit fit — awaiting Doug reply'},
-      {id:uid(),name:'Lindsey run clubs',why:'Novant ambassador, run club invitations'},
-    ];
-    localStorage.setItem(SK_TOP, JSON.stringify(top10));
+async function upsertRow(table,row){
+  try{
+    await sbFetch(table,{method:'POST',prefer:'return=minimal',
+      headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify(row)});
+  }catch(e){console.error('Upsert error',table,e);}
+}
+
+async function deleteRow(table,id){
+  try{
+    await sbFetch(table+'?id=eq.'+id,{method:'DELETE',prefer:'return=minimal'});
+  }catch(e){console.error('Delete error',table,e);}
+}
+
+async function loadModules(){
+  try{
+    // Load all tables in parallel
+    const [t,r,top,p,d] = await Promise.all([
+      sbFetch('todos?order=created_at.asc'),
+      sbFetch('reminders?order=created_at.asc'),
+      sbFetch('top10?order=position.asc'),
+      sbFetch('pie?order=created_at.asc'),
+      sbFetch('dev_notes?order=created_at.desc'),
+    ]);
+    todos     = t||[];
+    reminders = r||[];
+    top10     = top||[];
+    pie       = p||[];
+    devNotes  = d||[];
+
+    // Seed top10 if empty
+    if(!top10.length){
+      const seedTop=[
+        {id:uid(),name:'Fleet Feet Charlotte',why:'6 CLT locations — Dan Matena warm intro',position:0},
+        {id:uid(),name:'Mad Miles Run Club',why:'Largest CLT club, 113k following',position:1},
+        {id:uid(),name:'Charlotte Marathon',why:'10k runners, Lindsey connection',position:2},
+        {id:uid(),name:'Matt Miles',why:'Key to Andy Glaze + ultra network',position:3},
+        {id:uid(),name:'Dan Matena lunch',why:'Altra/Fleet Feet/Feetures intro path',position:4},
+        {id:uid(),name:'Around the Crown 10K',why:'5,000 runners, Sep 2026 event',position:5},
+        {id:uid(),name:'Grant Reese review',why:'Review committed on rundryq.com',position:6},
+        {id:uid(),name:'David Miller post',why:'@the_26.2 gear review pending',position:7},
+        {id:uid(),name:'Release Recovery Foundation',why:'Best nonprofit fit — awaiting Doug reply',position:8},
+        {id:uid(),name:'Lindsey run clubs',why:'Novant ambassador, run club invitations',position:9},
+      ];
+      for(const item of seedTop) await upsertRow('top10',item);
+      top10=seedTop;
+    }
+
+    // Seed pie if empty
+    if(!pie.length){
+      const seedPie=[
+        {id:uid(),name:'Courtney Dauwalter',why:'GOAT of ultrarunning — 500k followers'},
+        {id:uid(),name:'Hellah Sidibe',why:'250k followers, daily runner, nonprofit'},
+        {id:uid(),name:'iRunFar',why:'Premier ultra media — 180k followers'},
+        {id:uid(),name:'Running Warehouse',why:'Largest online specialty running retailer'},
+        {id:uid(),name:'Strava',why:'Integration or partnership with 125M users'},
+        {id:uid(),name:'Road Runner Sports',why:'40 locations nationally'},
+        {id:uid(),name:'Garmin partnership',why:'Phone-free running accessory crossover'},
+        {id:uid(),name:'Nike Running Club',why:'Biggest running community in the world'},
+      ];
+      for(const item of seedPie) await upsertRow('pie',item);
+      pie=seedPie;
+    }
+
+  }catch(e){
+    console.error('loadModules error:',e);
   }
-
-  // Seed Pie in the Sky
-  if(!pie.length){
-    pie=[
-      {id:uid(),name:'Courtney Dauwalter',why:'GOAT of ultrarunning — 500k followers'},
-      {id:uid(),name:'Hellah Sidibe',why:'250k followers, daily runner, nonprofit'},
-      {id:uid(),name:'iRunFar',why:'Premier ultra media — 180k followers'},
-      {id:uid(),name:'Running Warehouse',why:'Largest online specialty running retailer'},
-      {id:uid(),name:'Strava',why:'Integration or partnership with 125M users'},
-      {id:uid(),name:'Road Runner Sports',why:'40 locations nationally'},
-      {id:uid(),name:'Garmin partnership',why:'Phone-free running accessory crossover'},
-      {id:uid(),name:'Nike Running Club',why:'Biggest running community in the world'},
-    ];
-    localStorage.setItem(SK_PIE, JSON.stringify(pie));
-  }
-
   renderModules();
 }
 
-function saveModules(){
-  localStorage.setItem(SK_TODO, JSON.stringify(todos));
-  localStorage.setItem(SK_REM,  JSON.stringify(reminders));
-  localStorage.setItem(SK_TOP,  JSON.stringify(top10));
-  localStorage.setItem(SK_PIE,  JSON.stringify(pie));
-  localStorage.setItem(SK_DEV,  JSON.stringify(devNotes));
-}
+// saveModules is now a no-op — each action saves directly to Supabase
+function saveModules(){}
 
 function renderDashVisuals(){
   renderFunnel();
@@ -1459,25 +1489,27 @@ function renderModules(){
 }
 
 // ── TO-DO ─────────────────────────────────────────────────────────────────────
-function addTodo(){
+async function addTodo(){
   const text = document.getElementById('todo-text').value.trim();
   if(!text) return;
   const assigned = document.getElementById('todo-assign').value;
-  todos.push({id:uid(), text, done:false, assigned, created: new Date().toISOString()});
+  const item = {id:uid(), text, done:false, assigned, created_at: new Date().toISOString()};
+  todos.push(item);
   document.getElementById('todo-text').value = '';
-  saveModules(); renderTodo();
+  renderTodo();
+  await upsertRow('todos', item);
   toast('Task added','success');
 }
 
-function toggleTodo(id){
+async function toggleTodo(id){
   const t = todos.find(x=>x.id===id);
-  if(t) t.done = !t.done;
-  saveModules(); renderTodo();
+  if(t){ t.done = !t.done; renderTodo(); await upsertRow('todos', t); }
 }
 
-function deleteTodo(id){
+async function deleteTodo(id){
   todos = todos.filter(x=>x.id!==id);
-  saveModules(); renderTodo();
+  renderTodo();
+  await deleteRow('todos', id);
 }
 
 function renderTodo(){
@@ -1499,27 +1531,29 @@ function renderTodo(){
 }
 
 // ── REMINDERS ─────────────────────────────────────────────────────────────────
-function addReminder(){
+async function addReminder(){
   const text = document.getElementById('reminder-text').value.trim();
   const date = document.getElementById('reminder-date').value;
   if(!text) return;
   const assigned = document.getElementById('reminder-assign').value;
-  reminders.push({id:uid(), text, date, assigned, dismissed:false, created: new Date().toISOString()});
+  const item = {id:uid(), text, date, assigned, dismissed:false, created_at: new Date().toISOString()};
+  reminders.push(item);
   document.getElementById('reminder-text').value = '';
   document.getElementById('reminder-date').value = '';
-  saveModules(); renderReminders(); renderReminderAlerts(); updateReminderBadge();
+  renderReminders(); renderReminderAlerts(); updateReminderBadge();
+  await upsertRow('reminders', item);
   toast('Reminder added','success');
 }
 
-function dismissReminder(id){
+async function dismissReminder(id){
   const r = reminders.find(x=>x.id===id);
-  if(r) r.dismissed = true;
-  saveModules(); renderReminders(); renderReminderAlerts(); updateReminderBadge();
+  if(r){ r.dismissed = true; renderReminders(); renderReminderAlerts(); updateReminderBadge(); await upsertRow('reminders', r); }
 }
 
-function deleteReminder(id){
+async function deleteReminder(id){
   reminders = reminders.filter(x=>x.id!==id);
-  saveModules(); renderReminders(); renderReminderAlerts(); updateReminderBadge();
+  renderReminders(); renderReminderAlerts(); updateReminderBadge();
+  await deleteRow('reminders', id);
 }
 
 function reminderStatus(dateStr){
@@ -1582,30 +1616,36 @@ function updateReminderBadge(){
 }
 
 // ── TOP 10 ────────────────────────────────────────────────────────────────────
-function addTop10(){
+async function addTop10(){
   if(top10.length >= 10){toast('Already at 10 — remove one first','error');return;}
   const name = document.getElementById('top10-name').value.trim();
   const why  = document.getElementById('top10-why').value.trim();
   if(!name) return;
-  top10.push({id:uid(), name, why});
+  const item = {id:uid(), name, why, position:top10.length};
+  top10.push(item);
   document.getElementById('top10-name').value='';
   document.getElementById('top10-why').value='';
-  saveModules(); renderTop10();
+  renderTop10();
+  await upsertRow('top10', item);
   toast('Added to Top 10','success');
 }
 
-function removeTop10(id){
+async function removeTop10(id){
   top10 = top10.filter(x=>x.id!==id);
-  saveModules(); renderTop10();
+  renderTop10();
+  await deleteRow('top10', id);
 }
 
-function moveTop10(id, dir){
+async function moveTop10(id, dir){
   const idx = top10.findIndex(x=>x.id===id);
   if(idx<0) return;
   const newIdx = idx+dir;
   if(newIdx<0||newIdx>=top10.length) return;
   [top10[idx],top10[newIdx]]=[top10[newIdx],top10[idx]];
-  saveModules(); renderTop10();
+  renderTop10();
+  // Update positions in DB
+  await upsertRow('top10', {...top10[idx], position:idx});
+  await upsertRow('top10', {...top10[newIdx], position:newIdx});
 }
 
 function renderTop10(){
@@ -1630,20 +1670,23 @@ function renderTop10(){
 }
 
 // ── PIE IN THE SKY ────────────────────────────────────────────────────────────
-function addPie(){
+async function addPie(){
   const name = document.getElementById('pie-name').value.trim();
   const why  = document.getElementById('pie-why').value.trim();
   if(!name) return;
-  pie.push({id:uid(), name, why});
+  const item = {id:uid(), name, why, created_at: new Date().toISOString()};
+  pie.push(item);
   document.getElementById('pie-name').value='';
   document.getElementById('pie-why').value='';
-  saveModules(); renderPie();
+  renderPie();
+  await upsertRow('pie', item);
   toast('Added to Pie in the Sky 🚀','success');
 }
 
-function removePie(id){
+async function removePie(id){
   pie = pie.filter(x=>x.id!==id);
-  saveModules(); renderPie();
+  renderPie();
+  await deleteRow('pie', id);
 }
 
 const PIE_ICONS = ['🚀','🌟','💎','🏆','🔥','⚡','🎯','🌙','✨','🦄'];
@@ -1664,19 +1707,22 @@ function renderPie(){
 }
 
 // ── DEV NOTES ─────────────────────────────────────────────────────────────────
-function addDevNote(){
+async function addDevNote(){
   const text = document.getElementById('dev-note-input').value.trim();
   if(!text) return;
   const type = document.getElementById('dev-note-type').value;
-  devNotes.unshift({id:uid(), text, type, created: new Date().toISOString()});
+  const item = {id:uid(), text, type, created_at: new Date().toISOString()};
+  devNotes.unshift(item);
   document.getElementById('dev-note-input').value='';
-  saveModules(); renderDevNotes();
+  renderDevNotes();
+  await upsertRow('dev_notes', item);
   toast('Dev note saved','success');
 }
 
-function deleteDevNote(id){
+async function deleteDevNote(id){
   devNotes = devNotes.filter(x=>x.id!==id);
-  saveModules(); renderDevNotes();
+  renderDevNotes();
+  await deleteRow('dev_notes', id);
 }
 
 const DEV_TYPE_LABELS = {feature:'✨ Feature',bug:'🐛 Bug',improvement:'⚡ Improvement',idea:'💡 Idea'};
@@ -1700,11 +1746,11 @@ function renderDevNotes(){
 }
 
 // ── LAST CONTACTED UPDATE FROM DETAIL PANEL ───────────────────────────────────
-function markContacted(id){
+async function markContacted(id){
   const idx = leads.findIndex(c=>c.id===id);
   if(idx===-1) return;
   leads[idx].lastContacted = new Date().toISOString().split('T')[0];
-  save(leads[idx]);
+  await save(leads[idx]);
   openDetail(id);
   render();
   toast('Last contacted updated','success');
@@ -1717,6 +1763,51 @@ document.addEventListener('keydown',e=>{
 
 document.body.className='view-pipeline';
 load(); // async — render() is called inside load() after data arrives
+
+// ── POLLING — sync changes from Tyler or Jeff every 30 seconds ───────────────
+let lastLeadCount = 0;
+let pollActive = true;
+
+async function pollForUpdates(){
+  if(!pollActive) return;
+  try{
+    // Quietly fetch leads in background
+    const rows = await sbFetch('leads?order=created_at.asc');
+    if(rows && JSON.stringify(rows.map(r=>r.id+r.status+r.lastContacted)) !==
+               JSON.stringify(leads.map(r=>r.id+r.status+r.lastContacted))){
+      leads = rows;
+      render();
+      // Don't show toast for background syncs — too noisy
+    }
+    // Also poll modules
+    const [t,r,top,p,d] = await Promise.all([
+      sbFetch('todos?order=created_at.asc'),
+      sbFetch('reminders?order=created_at.asc'),
+      sbFetch('top10?order=position.asc'),
+      sbFetch('pie?order=created_at.asc'),
+      sbFetch('dev_notes?order=created_at.desc'),
+    ]);
+    const modulesChanged =
+      JSON.stringify(t) !== JSON.stringify(todos) ||
+      JSON.stringify(r) !== JSON.stringify(reminders) ||
+      JSON.stringify(top) !== JSON.stringify(top10) ||
+      JSON.stringify(p) !== JSON.stringify(pie) ||
+      JSON.stringify(d) !== JSON.stringify(devNotes);
+    if(modulesChanged){
+      todos=t||[]; reminders=r||[]; top10=top||[];
+      pie=p||[]; devNotes=d||[];
+      if(document.body.className==='view-dashboard') renderModules();
+      updateReminderBadge();
+    }
+  }catch(e){
+    // Silent fail on poll — don't interrupt the user
+    console.log('Poll quiet fail:', e.message);
+  }
+  setTimeout(pollForUpdates, 30000); // poll every 30 seconds
+}
+
+// Start polling after initial load settles
+setTimeout(pollForUpdates, 35000);
 </script>
 </body>
 </html>
